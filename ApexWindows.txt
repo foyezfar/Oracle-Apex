@@ -1,0 +1,100 @@
+Oracle Apex 20.1 installation on Windows
+=============================================
+cd F:\oracle\apex20_1\apex
+[oracle@oradb apex]$ sqlplus /nolog
+SQL> connect sys as sysdba
+Show pdbs; 
+alter session set container=pdbdev;
+
+Run apex installation Script 
+=============================================
+@apexins.sql SYSAUX SYSAUX TEMP /i/
+
+Set Admin Password 
+=============================================
+@apxchpwd.sql
+Step Run Image Script 
+=============================================
+Now run the script to copy the Oracle Apex 20.1 images to the apex/images folder. Run the script as follows:
+@apex_epg_config.sql F:\oracle\apex20_1\
+
+Unlock the APEX_PUBLIC_USER 
+=============================================
+ALTER USER APEX_PUBLIC_USER ACCOUNT UNLOCK;
+To change the password for the APEX_PUBLIC_USER account:
+
+ALTER USER APEX_PUBLIC_USER IDENTIFIED BY Pusr#123;
+
+
+Run Configure Apex RESTful Service Script 
+=============================================
+ @apex_rest_config.sql
+This will ask you to give APEX_LISTENER and APEX_PUBLIC_USER password to set which will be used later for the ORDS setup. 
+
+Set the HTTP port 
+=============================================
+if using HTTP server, execute the following command:
+
+EXEC DBMS_XDB.SETHTTPPORT(8181);
+
+
+
+=============================================
+If face problem in first login: 
+
+Sometime, after installing Apex, when we try to login in this http://localhost:8181/apex/apex_admin, it shows a popup login and could not login this. 
+Mostly this occurs because the ANONYMOUS account is locked and/or expired.
+In this situation, Log in to main container database (not PDB) and run the following query to determine status:
+
+select account_status from dba_users where username = 'ANONYMOUS';
+If account_status is expired and locked, run the following:
+
+alter user ANONYMOUS identified by anonymous;
+alter user ANONYMOUS account unlock;
+
+
+
+
+Installation, Configuration, and Development of Oracle Rest Data Service (ORDS 19.1)
+=============================================
+1) Unzip ords-19.1.zip file in a folder “ords”. i.e E:\ords
+
+2) Press Window+R to open run window.
+
+3) Type cmd and press enter.
+
+4) Go to ords directory. i.e “cd e:\ords”
+
+5) Type java -jar ords.war 
+
+Enter the APEX static resources location: e:\apex\images
+
+
+Installation of Apache Tomcat 9
+=============================================
+Next next
+
+
+Deploy ORDS on Apache Tomcat 9
+=============================================
+1) Open browser and go to localhost:<tomcat port>
+
+2) Click on Server Status
+
+3) Click on Application List
+
+4) under Deploy section, Enter ords.war file path. i.e e:\ords\ords.war
+
+5) Click on Deploy button
+
+6) Thanks to me 🙂 Now you can run APEX on Apache Tomcat webserver. 
+
+http://localhost:8080/ords/f?p=4550
+=============================================
+=============================================
+
+
+
+
+http://www.apexlessons.com/how-to-install-and-configure-oracle-apex-with-tomcat-step-by-step/
+https://www.youtube.com/watch?v=uWHSSZhIAQg&t=150s&ab_channel=OracleAPEX

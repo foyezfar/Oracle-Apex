@@ -1,0 +1,180 @@
+https://saidulhaque.com/knowledgebase/article-31/step-by-step-oracle-apex-20-1-installation-on-windows-and-unix-linux-systems#/
+https://you-vibes.blogspot.com/2021/04/how-to-install-oracle-apex-on-linux.html
+
+
+1. sql-> create tablespace apex datafile '/u01/app/oracle/oradata/CDB1/apex01.dbf' SIZE 100M AUTOEXTEND ON NEXT 1M;
+
+Run cmd from apex folder
+sqlplus -> sys@pdb1 as sysdba
+select version from dba_registry where comp_id='APEX'
+
+alter session set container=pdb1;
+
+@apexins.sql APEX APEX TEMP /i/ 
+
+@apxchpwd.sql              pass- Welcome123#
+
+@apex_epg_config.sql /u01/app/oracle/product/19.0.0
+
+select username,account_status  from dba_users where username like 'APEX%'
+
+ALTER USER APEX_PUBLIC_USER ACCOUNT UNLOCK;
+
+ALTER USER APEX_PUBLIC_USER IDENTIFIED BY apex;
+
+@apex_rest_config.sql   [have to provide password]
+
+exec dbms_xdb.sethttpport('8081');commit;
+select dbms_xdb.gethttpport from dual;
+
+http://localhost:8181/apex/apex_admin
+
+select account_status from dba_users where username = 'ANONYMOUS';
+
+alter user ANONYMOUS identified by anonymous;
+alter user ANONYMOUS account unlock;
+
+SELECT STATUS FROM DBA_REGISTRY
+WHERE COMP_ID = 'APEX';
+
+
+
+--------------Installing Tomcat -------------------
+
+create a directory for java and unzip it.
+
+mkdir /opt/java
+
+	tar -xzvf openjdk-11.0.9_linux-x64_bin.tar.gz
+ln -s jdk-11.0.9 latest
+
+mkdir /opt/tomcat
+	tar -xzvf apache-tomcat-9.0.45.tar.gz
+ ln -s apache-tomcat-9.0.45 latest
+
+
+d) create .env file for java.	
+
+	vi /home/oracle/java.env
+
+	export JAVA_HOME=/opt/java/jdk-11.0.9
+
+	export PATH=$JAVA_HOME/bin:$PATH
+
+e) start the tomcat services.
+
+	. /home/oracle/java.env
+
+	cd /opt/tomcat/apache-tomcat-9.0.45/bin
+
+	./startup.sh
+
+f) check the status of the tomcat:
+
+	ps -ef|grep tomcat
+
+	http://192.168.0.100:8080/
+
+
+--------------Installing ORDS ------------------
+
+
+
+	a)	Unlock the following users and change their passwords:
+
+
+	ALTER USER APEX_LISTENER IDENTIFIED BY apex ACCOUNT UNLOCK;
+
+	ALTER USER APEX_PUBLIC_USER IDENTIFIED BY apex ACCOUNT UNLOCK;
+
+	ALTER USER APEX_REST_PUBLIC_USER IDENTIFIED BY apex ACCOUNT UNLOCK;
+
+--select username,account_status  from dba_users where username like 'ORDS%'
+
+
+
+	c)	Make a directory to hold the configuration.
+
+
+
+	mkdir -p /u01/app/oracle/product/19.0.0/ords/conf
+
+
+
+	edit the following file and input only given entries.
+
+
+
+	vi /u01/app/oracle/product/19.0.0/ords/params/ords_params.properties
+
+
+
+	db.hostname=localhost
+
+	db.port=1521
+
+	db.servicename=orcl
+
+	db.sid=orcl
+
+
+d)	Set the configuration directory:
+
+	
+
+	cd /u01/app/oracle/product/19.0.0/ords
+
+	. /home/oracle/java.env
+
+
+
+	$JAVA_HOME/bin/java -jar ords.war configdir /u01/app/oracle/product/19.0.0/ords/conf
+
+
+
+	e)	Start the configuration:
+
+
+
+	$JAVA_HOME/bin/java -jar ords.war
+
+
+
+
+mkdir -p /u01/app/oracle/product/19.0.0/tomcat/apache-tomcat-9.0.45/webapps/i
+
+cp -R /u01/app/oracle/product/19.0.0/apex/images/* /u01/app/oracle/product/19.0.0/tomcat/apache-tomcat-9.0.45/webapps/i
+
+cp /u01/app/oracle/product/19.0.0/ords/ords.war /u01/app/oracle/product/19.0.0/tomcat/apache-tomcat-9.0.45/webapps
+
+
+
+-----------------
+cd /u01/app/oracle/product/19.0.0/ords
+java -jar ords.war validate
+
+
+
+
+
+
+
+
+
+apex remove
+---------------------------
+
+
+$ cd $ORACLE_HOME/apex
+$ sqlplus / as sysdba
+SQL> @apxremov.sql
+
+
+
+1.CREATE TABLESPACE apex DATAFILE '/path/to/datafiles/apex01.dbf' SIZE 100M AUTOEXTEND ON NEXT 1M;
+2.$ cd /home/oracle/apex   [Change directory to the directory holding the unzipped APEX software.]
+3.sqlplus -> sys@pdb1 as sysdba
+4.@apexins.sql tablespace_apex tablespace_files tablespace_temp images
+@apexins.sql apex apex TEMP /i/
+
+
