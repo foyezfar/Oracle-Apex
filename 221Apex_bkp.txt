@@ -1,0 +1,326 @@
+
+CREATE TABLE APEX_220100.WWV_FLOW_WS_APPLICATIONS
+(
+  ID                           NUMBER,
+  NAME                         VARCHAR2(255 BYTE) NOT NULL,
+  OWNER                        VARCHAR2(255 BYTE) NOT NULL,
+  DESCRIPTION                  VARCHAR2(4000 BYTE),
+  STATUS                       VARCHAR2(30 BYTE),
+  DATE_FORMAT                  VARCHAR2(255 BYTE),
+  LANGUAGE                     VARCHAR2(255 BYTE),
+  TERRITORY                    VARCHAR2(255 BYTE),
+  HOME_PAGE_ID                 NUMBER,
+  PAGE_STYLE                   NUMBER,
+  CUSTOM_CSS                   VARCHAR2(4000 BYTE),
+  AUTH_ID                      NUMBER,
+  ACL_TYPE                     VARCHAR2(30 BYTE),
+  LOGIN_URL                    VARCHAR2(2000 BYTE),
+  LOGOUT_URL                   VARCHAR2(2000 BYTE),
+  ALLOW_SQL_YN                 VARCHAR2(1 BYTE),
+  SHOW_RESET_PASSWD_YN         VARCHAR2(1 BYTE),
+  SHOW_PEER_NAVIGATION_YN      VARCHAR2(1 BYTE),
+  SHOW_CHILD_NAVIGATION_YN     VARCHAR2(1 BYTE),
+  SHOW_ANNOTATIONS_CONTROL_YN  VARCHAR2(1 BYTE),
+  ALLOW_PUBLIC_ACCESS_YN       VARCHAR2(1 BYTE),
+  LOGIN_PAGE_MESSAGE           VARCHAR2(4000 BYTE),
+  LOGO_TYPE                    VARCHAR2(30 BYTE),
+  LOGO_TEXT                    VARCHAR2(500 BYTE),
+  LOGO_TEXT_ATTRIBUTES         VARCHAR2(4000 BYTE),
+  LOGO_IMAGE                   BLOB,
+  LOGO_IMAGE_FILENAME          VARCHAR2(255 BYTE),
+  LOGO_IMAGE_MIMETYPE          VARCHAR2(255 BYTE),
+  LOGO_IMAGE_CHARSET           VARCHAR2(255 BYTE),
+  LOGO_IMAGE_LAST_UPDATE       DATE,
+  LOGO_IMAGE_ATTRIBUTES        VARCHAR2(4000 BYTE),
+  LOGO_FILEPATH                VARCHAR2(4000 BYTE),
+  LOGO_FILEPATH_ATTRIBUTES     VARCHAR2(4000 BYTE),
+  APPLICATION_TYPE             VARCHAR2(30 BYTE) DEFAULT 'STANDARD',
+  EMAIL_FROM                   VARCHAR2(255 BYTE),
+  CREATED_BY                   VARCHAR2(255 BYTE) NOT NULL,
+  CREATED_ON                   DATE             NOT NULL,
+  UPDATED_BY                   VARCHAR2(255 BYTE),
+  UPDATED_ON                   DATE,
+  SECURITY_GROUP_ID            NUMBER           NOT NULL
+)
+LOB (LOGO_IMAGE) STORE AS SECUREFILE (
+  TABLESPACE  APEX
+  ENABLE      STORAGE IN ROW
+  CHUNK       8192
+  NOCACHE
+  LOGGING)
+TABLESPACE APEX
+PCTUSED    0
+PCTFREE    10
+INITRANS   1
+MAXTRANS   255
+STORAGE    (
+            PCTINCREASE      0
+            BUFFER_POOL      DEFAULT
+           )
+LOGGING 
+NOCOMPRESS 
+NOCACHE
+MONITORING;
+
+
+CREATE UNIQUE INDEX APEX_220100.WWV_FLOW_WS_APPLICATIONS_PK ON APEX_220100.WWV_FLOW_WS_APPLICATIONS
+(ID)
+LOGGING
+TABLESPACE APEX
+PCTFREE    10
+INITRANS   2
+MAXTRANS   255
+STORAGE    (
+            PCTINCREASE      0
+            BUFFER_POOL      DEFAULT
+           );
+
+CREATE INDEX APEX_220100.WWV_FLOW_WS_APP_IDX ON APEX_220100.WWV_FLOW_WS_APPLICATIONS
+(SECURITY_GROUP_ID)
+LOGGING
+TABLESPACE APEX
+PCTFREE    10
+INITRANS   2
+MAXTRANS   255
+STORAGE    (
+            PCTINCREASE      0
+            BUFFER_POOL      DEFAULT
+           );
+
+CREATE INDEX APEX_220100.WWV_FLOW_WS_APP_IDX2 ON APEX_220100.WWV_FLOW_WS_APPLICATIONS
+(AUTH_ID)
+LOGGING
+TABLESPACE APEX
+PCTFREE    10
+INITRANS   2
+MAXTRANS   255
+STORAGE    (
+            PCTINCREASE      0
+            BUFFER_POOL      DEFAULT
+           );
+
+CREATE OR REPLACE TRIGGER APEX_220100.wwv_flow_ws_applications_t1
+    before insert or update ON APEX_220100.WWV_FLOW_WS_APPLICATIONS
+    for each row
+begin
+    --
+    -- maintain pk and timestamps
+    --
+    if inserting and :new.id is null then
+        :new.id := wwv_flow_id.next_val;
+    end if;
+    --
+    -- vpd
+    --
+    if :new.security_group_id is null then
+       :new.security_group_id := nvl(wwv_flow_security.g_security_group_id,0);
+    end if;
+
+    if inserting then
+        :new.created_on := sysdate;
+        :new.created_by := nvl(wwv_flow.g_user,user);
+        :new.updated_on := sysdate;
+        :new.updated_by := nvl(wwv_flow.g_user,user);
+    elsif updating then
+        :new.updated_on := sysdate;
+        :new.updated_by := nvl(wwv_flow.g_user,user);
+    end if;
+    --
+    if :new.allow_public_access_yn is null then
+        :new.allow_public_access_yn := 'N';
+    end if;
+
+    --
+    -- set owner
+    --
+    if :new.owner is null then
+        :new.owner := :new.created_by;
+    end if;
+    if inserting or :new.owner <> nvl(:old.owner, :new.owner) then
+        for i in ( select min(case when schema = :new.owner then schema end) over () found_schema,
+                          nvl (
+                              min(case when is_apex$_schema = 'Y' then schema end) over (),
+                              schema ) first_schema
+                     from wwv_flow_company_schemas
+                    where security_group_id = :new.security_group_id )
+        loop
+            if i.found_schema is null then
+                wwv_flow_debug.trace (
+                    'owner "%s" not found, reverting to "%s"',
+                    :new.owner,
+                    i.first_schema );
+                :new.owner := i.first_schema;
+            else
+                wwv_flow_debug.trace (
+                    'accepting owner change to "%s"',
+                    i.found_schema );
+                :new.owner := i.found_schema;
+            end if;
+            exit;
+        end loop;
+    end if;
+    --
+    -- set status
+    --
+    if :new.status is null then
+        :new.status := 'AVAILABLE';
+    end if;
+
+    if :new.show_reset_passwd_yn is null then
+        :new.show_reset_passwd_yn := 'Y';
+    end if;
+
+end;
+/
+
+
+ALTER TABLE APEX_220100.WWV_FLOW_WS_APPLICATIONS ADD (
+  CONSTRAINT WWV_FLOW_WS_APP_ACL_TYP_CK
+  CHECK (acl_type in (
+                                  'DEFAULT',
+                                  'CUSTOM'))
+  ENABLE VALIDATE,
+  CONSTRAINT WWV_FLOW_WS_APP_ALLOW_PUB_CK
+  CHECK (allow_public_access_yn in ('Y','N'))
+  ENABLE VALIDATE,
+  CONSTRAINT WWV_FLOW_WS_APP_LOGO_CK
+  CHECK (logo_type in (
+                                     'NONE','TEXT','IMAGE','FILEPATH'))
+  ENABLE VALIDATE,
+  CONSTRAINT WWV_FLOW_WS_APP_RPWD_CK
+  CHECK (show_reset_passwd_yn in ('Y','N'))
+  ENABLE VALIDATE,
+  CONSTRAINT WWV_FLOW_WS_APP_STATUS_CK
+  CHECK (status in (
+                                  'AVAILABLE',
+                                  'DEVELOPERS_ONLY',
+                                  'UNAVAILABLE'))
+  ENABLE VALIDATE,
+  CONSTRAINT WWV_FLOW_WS_APP_TYPE
+  CHECK (application_type in ('STANDARD','TEMPLATE','SAMPLE','TEMPLATE_HIDDEN'))
+  ENABLE VALIDATE,
+  CONSTRAINT WWV_FLOW_WS_APPLICATIONS_PK
+  PRIMARY KEY
+  (ID)
+  USING INDEX APEX_220100.WWV_FLOW_WS_APPLICATIONS_PK
+  ENABLE VALIDATE);
+
+ALTER TABLE APEX_220100.WWV_FLOW_WS_APPLICATIONS ADD (
+  CONSTRAINT WWV_FLOW_WS_APPLICATIONS_FK 
+  FOREIGN KEY (SECURITY_GROUP_ID) 
+  REFERENCES APEX_220100.WWV_FLOW_COMPANIES (PROVISIONING_COMPANY_ID)
+  ON DELETE CASCADE
+  ENABLE VALIDATE);
+  
+
+  
+  
+  
+  
+  
+  ===============================================================
+  
+  
+  
+CREATE OR REPLACE FORCE VIEW APEX_220100.APEX_WS_APPLICATIONS
+(
+    WORKSPACE,
+    APPLICATION_ID,
+    WORKSPACE_ID,
+    APPLICATION_NAME,
+    OWNER,
+    DESCRIPTION,
+    STATUS,
+    LOGIN_URL,
+    LOGOUT_URL,
+    HOME_PAGE_ID,
+    PAGE_STYLE,
+    CUSTOM_CSS,
+    SHOW_RESET_PASSWD_YN,
+    ALLOW_SQL_YN,
+    ALLOW_PUBLIC_ACCESS_YN,
+    LOGIN_PAGE_MESSAGE,
+    AUTH_ID,
+    ACL_TYPE,
+    DATE_FORMAT,
+    LANGUAGE,
+    TERRITORY,
+    LOGO_TYPE,
+    LOGO_TEXT,
+    LOGO_TEXT_ATTRIBUTES,
+    LOGO_IMAGE_SIZE,
+    LOGO_IMAGE_FILENAME,
+    LOGO_IMAGE_MIMETYPE,
+    LOGO_IMAGE_CHARSET,
+    LOGO_IMAGE_LAST_UPDATE,
+    LOGO_IMAGE_ATTRIBUTES,
+    LOGO_FILEPATH,
+    LOGO_FILEPATH_ATTRIBUTES,
+    EMAIL_FROM,
+    CREATED_ON,
+    CREATED_BY,
+    UPDATED_ON,
+    UPDATED_BY
+)
+BEQUEATH DEFINER
+AS
+    SELECT w.short_name                          workspace,
+           a.id                                  application_id,
+           a.security_group_id                   workspace_id,
+           a.name                                application_name,
+           a.OWNER,
+           a.DESCRIPTION,
+           a.STATUS,
+           a.LOGIN_URL,
+           a.LOGOUT_URL,
+           a.HOME_PAGE_ID,
+           a.page_style,
+           a.custom_css,
+           a.show_reset_passwd_yn,
+           a.allow_sql_yn,
+           a.allow_public_access_yn,
+           a.login_page_message,
+           a.AUTH_ID,
+           a.ACL_TYPE,
+           a.DATE_FORMAT,
+           a.language,
+           a.territory,
+           a.LOGO_TYPE,
+           a.LOGO_TEXT,
+           a.LOGO_TEXT_ATTRIBUTES,
+           sys.DBMS_LOB.getlength (a.LOGO_IMAGE) logo_image_size,
+           a.LOGO_IMAGE_FILENAME,
+           a.LOGO_IMAGE_MIMETYPE,
+           a.LOGO_IMAGE_CHARSET,
+           a.LOGO_IMAGE_LAST_UPDATE,
+           a.LOGO_IMAGE_ATTRIBUTES,
+           a.LOGO_FILEPATH,
+           a.LOGO_FILEPATH_ATTRIBUTES,
+           a.email_from,
+           --
+           a.created_on,
+           a.created_by,
+           a.updated_on,
+           a.updated_by
+      FROM wwv_flow_ws_applications  a,
+           wwv_flow_companies        w,
+           wwv_flow_company_schemas  s,
+           wwv_flow_current_sgid     sgid
+     WHERE     (   sgid.security_group_id = w.provisioning_company_id
+                OR (    s.schema = sgid.cu
+                    AND (   sgid.nls_sort = 'BINARY'
+                         OR NLSSORT (s.schema, 'NLS_SORT=BINARY') =
+                            NLSSORT (sgid.cu, 'NLS_SORT=BINARY')))
+                OR sgid.has_apex_admin_read_role_yn = 'Y')
+           AND s.security_group_id = w.provisioning_company_id
+           AND s.is_apex$_schema = 'Y'
+           AND a.security_group_id = w.provisioning_company_id
+           AND w.provisioning_company_id != 0;
+
+COMMENT ON TABLE APEX_220100.APEX_WS_APPLICATIONS IS 'Websheet applications';
+
+
+CREATE OR REPLACE PUBLIC SYNONYM APEX_WS_APPLICATIONS FOR APEX_220100.APEX_WS_APPLICATIONS;
+
+
+GRANT READ ON APEX_220100.APEX_WS_APPLICATIONS TO PUBLIC;

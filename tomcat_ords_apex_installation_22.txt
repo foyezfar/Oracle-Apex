@@ -1,0 +1,239 @@
+
+=====================================================================
+Installation of Oracle Apex 22.1
+=====================================================================
+[oracle@localhost ]$ sqlplus / as sysdba
+SQL> alter session set container=orclpdb;
+SQL> SELECT FILE_NAME FROM DBA_DATA_FILES;
+
+Step 1:
+SQL> create tablespace apex datafile '/u01/app/oracle/oradata/orcl/apex01.dbf' SIZE 100M AUTOEXTEND ON NEXT 1M;
+
+SQL> SELECT TABLESPACE_NAME FROM DBA_DATA_FILES;
+SQL> SELECT FILE_NAME FROM DBA_DATA_FILES;
+
+Step 2:
+[oracle@localhost soft]$ ls
+apex_21.2_en.zip
+[oracle@localhost soft]$ unzip apex_21.2_en.zip
+
+Step 3:
+Connect to SQL*Plus as the SYS user and run the "apexins.sql" script, specifying the relevant tablespace names and image URL.
+[oracle@localhost soft]$ cd apex/
+[oracle@localhost apex]$ sqlplus
+
+SQL> show con_name;
+CON_NAME
+------------------------------
+ORCLPDB
+SQL> @apexins.sql APEX APEX TEMP /i/    [ Note: @apexins.sql tablespace_apex tablespace_files tablespace_temp images ]
+
+Step 4:
+change the admin password:
+SYS> @apxchpwd.sql
+
+Step 5:
+Create the APEX_LISTENER and APEX_REST_PUBLIC_USER users by running the "apex_rest_config.sql" script.
+SYS> @apex_rest_config.sql
+
+Welcome@123#
+
+Step 6:
+Unlock the following users and change their passwords:
+SYS> SET LINESIZE 200
+SYS> select username,account_status from dba_users where username like 'APEX%' ;
+SYS> ALTER USER APEX_220100 IDENTIFIED BY "Welcome@123#" ACCOUNT UNLOCK;
+
+SYS> select account_status from dba_users where username = 'ANONYMOUS';
+
+[oracle@oracledb apex]$ sqlplus / as sysdba
+SQL> ALTER USER ANONYMOUS IDENTIFIED BY "Welcome@123#" ACCOUNT UNLOCK;
+
+
+
+
+https://oracle-base.com/articles/misc/oracle-rest-data-services-ords-standalone-mode-22-onward
+
+Welcome@123#
+=====================================================================
+Installing ORDS
+=====================================================================
+We will use the following environment variables when referencing the paths in this article. Notice we are adding the ORDS_HOME/bin 
+directory to our PATH, so we don't have to explicitly state the path each time we use the ords command.
+
+[oracle@oracledb] vim .bash_profile
+
+export JAVA_HOME=/u01/soft/jdk-11.0.9
+export ORDS_HOME=/u01/soft/ords
+export ORDS_CONFIG=/u01/soft/ords/config
+export PATH=${ORDS_HOME}/bin:${PATH}
+export _JAVA_OPTIONS="-Xms1126M -Xmx1126M"
+export APEX_IMAGES=/u01/soft/apex/images
+
+
+[oracle@oracledb] . .bash_profile
+[oracle@oracledb soft]$ tar -xzf jdk-11.0.9_linux-x64_bin.tar.gz
+[oracle@oracledb soft]$ mkdir ords
+[oracle@oracledb soft]$ mv ords-22.1.0.105.1723.zip /u01/soft
+[oracle@oracledb soft]$ unzip ords-21.4.2.062.1806.zip
+[oracle@oracledb soft]$ cd ords
+[oracle@oracledb ords]$ mkdir -p /u01/soft/ords/config
+[oracle@oracledb ords]$ mkdir -p /u01/soft/ords/config/global/doc_root
+
+[oracle@oracledb ords]$ $JAVA_HOME/bin/java -jar ords.war install
+
+
+[oracle@oracledb ords]$ ords install           
+Picked up _JAVA_OPTIONS: -Xms2000M -Xmx2000M
+2022-10-27T06:14:00.189Z INFO        Your configuration folder /u01/soft/ords/config is located in ORDS product folder.  Oracle recommends to use a different configuration folder.
+
+ORDS: Release 22.1 Production on Thu Oct 27 06:14:00 2022
+
+Copyright (c) 2010, 2022, Oracle.
+
+Configuration:
+  /u01/soft/ords/config/
+
+The configuration folder /u01/soft/ords/config does not contain any configuration files.
+
+Oracle REST Data Services - Interactive Install
+
+  Enter a number to select the type of installation
+    [1] Install or upgrade ORDS in the database only
+    [2] Create or update a database pool and install/upgrade ORDS in the database
+    [3] Create or update a database pool only
+  Choose [2]:
+  Enter a number to select the database connection type to use
+    [1] Basic (host name, port, service name)
+    [2] TNS (TNS alias, TNS directory)
+    [3] Custom database URL
+  Choose [1]: oracledb
+Invalid value. Try again.
+  Enter a number to select the database connection type to use
+    [1] Basic (host name, port, service name)
+    [2] TNS (TNS alias, TNS directory)
+    [3] Custom database URL
+  Choose [1]:
+  Enter the database host name [localhost]: oracledb
+  Enter the database listen port [1521]:
+  Enter the database service name [orcl]: orclpdb
+  Provide database user name with administrator privileges.
+    Enter the administrator username: sys
+  Enter the database password for SYS AS SYSDBA:
+Connecting to database user: SYS AS SYSDBA url: jdbc:oracle:thin:@//oracledb:1521/orclpdb
+
+Retrieving information.
+  Enter the database password for ORDS_PUBLIC_USER:
+Confirm password:
+Connecting to database user: ORDS_PUBLIC_USER url: jdbc:oracle:thin:@//oracledb:1521/orclpdb
+  Enter a number to select additional feature(s) to enable:
+    [1] Database Actions  (Enables all features)
+    [2] REST Enabled SQL and Database API
+    [3] REST Enabled SQL
+    [4] Database API
+    [5] None
+  Choose [1]:
+  Enter a number to configure and start ORDS in standalone mode
+    [1] Configure and start ORDS in standalone mode
+    [2] Skip
+  Choose [1]:
+  Enter a number to use HTTP or HTTPS protocol
+    [1] HTTP
+    [2] HTTPS
+  Choose [1]:
+  Enter the HTTP port [8080]:
+---------------------------------------------------------------------
+
+  
+  
+  
+vim ~/scripts/start_ords.sh
+
+#!/bin/bash
+export PATH=/usr/sbin:/usr/local/bin:/usr/bin:/usr/local/sbin:$PATH
+export JAVA_HOME=/u01/soft/jdk-11.0.9
+export ORDS_HOME=/u01/soft/ords
+export ORDS_CONFIG=/u01/soft/ords/config
+LOGFILE=/home/oracle/scripts/logs/ords-`date +"%Y""%m""%d"`.log
+export _JAVA_OPTIONS="-Xms1126M -Xmx1126M"
+nohup ${ORDS_HOME}/bin/ords --config ${ORDS_CONFIG} serve >> $LOGFILE 2>&1 &
+echo "View log file with : tail -f $LOGFILE"
+
+
+We can kill ORDS by killing the background process. We create a scripts called "~/scripts/stop_ords.sh" with the following contents.
+---------------------------------------------------------------------
+vim ~/scripts/stop_ords.sh
+
+#!/bin/bash
+export PATH=/usr/sbin:/usr/local/bin:/usr/bin:/usr/local/sbin:$PATH
+kill `ps -ef | grep [o]rds.war | awk '{print $2}'`
+
+
+We create the log directory and make the scripts executable.
+---------------------------------------------------------------------
+mkdir -p ~/scripts/logs
+chmod u+x ~/scripts/*.sh
+
+We can then easily stop and start ORDS using the scripts.
+---------------------------------------------------------------------
+~/scripts/stop_ords.sh
+~/scripts/start_ords.sh
+
+
+
+=====================================================================
+
+SQL> select username,account_status from dba_users where username like 'ORDS%'
+SQL> ALTER USER ORDSYS ACCOUNT UNLOCK identified by "Welcome@123#";
+
+
+
+
+
+
+
+
+=====================================================================
+Installation of Tomcat & Java JDK
+=====================================================================
+[oracle@oracledb soft]$ tar -xzf jdk-11.0.9_linux-x64_bin.tar.gz
+[oracle@oracledb soft]$ tar -xzf apache-tomcat-9.0.45.tar.gz
+[oracle@oracledb soft]$ rm -rf jdk-11.0.9_linux-x64_bin.tar.gz apache-tomcat-9.0.45.tar.gz
+
+[oracle@localhost soft]$ vim tomcat.env
+export JAVA_HOME=/home/oracle/soft/jdk-11.0.9
+export CATALINA_HOME=/home/oracle/soft/apache-tomcat-9.0.45
+export CATALINA_BASE=$CATALINA_HOME
+
+
+[oracle@localhost soft]$ . tomcat.env
+[oracle@localhost soft]$ cd $CATALINA_HOME
+[oracle@localhost apache-tomcat-9.0.45]$ cd bin/
+[oracle@localhost bin]$ sh startup.sh
+[oracle@localhost bin]$ ps -ef|grep tomcat
+
+Tomcat Port Change
+=====================
+vim /home/oracle/soft/apache-tomcat-9.0.45/conf/server.xml
+
+$CATALINA_HOME/bin/shutdown.sh
+$CATALINA_HOME/bin/startup.sh
+
+=====================================================================
+Tomcat Deployment
+=====================================================================
+Step 1:
+Copy the APEX images to the Tomcat "webapps" directory.
+[oracle@localhost]$ mkdir -p $CATALINA_HOME/webapps/i/
+[oracle@localhost]$ cp -R /home/oracle/soft/apex/images/* $CATALINA_HOME/webapps/i/
+Step 2:
+Copy the "ords.war" file to the Tomcat "webapps" directory.
+[oracle@localhost ~]$ cd /home/oracle/soft/ords/
+[oracle@localhost ords]$ cp ords.war $CATALINA_HOME/webapps
+
+
+
+
+
+
+

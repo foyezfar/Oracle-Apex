@@ -1,0 +1,49 @@
+Verifying the Validity of an Oracle Application Express Installation
+----------------------------------------------------------------------------
+SELECT STATUS FROM DBA_REGISTRY WHERE COMP_ID = 'APEX';
+
+
+select name from v$datafile ;
+CREATE TABLESPACE apex DATAFILE '/u01/app/oracle/oradata/orcl/apex01.dbf' SIZE 100M AUTOEXTEND ON NEXT 1M;
+
+
+[oracle@oracledb]$ tar -xf apex_4.2.tar
+[oracle@oracledb]$ cd apex
+[oracle@oracledb apex]$ sqlplus / as sysdba
+SQL> @apexins.sql APEX APEX TEMP /i/    [ Note: @apexins.sql tablespace_apex tablespace_files tablespace_temp images ]
+SYS> @apxchpwd.sql   - Welcome@123#
+Create the APEX_LISTENER and APEX_REST_PUBLIC_USER users by running the "apex_rest_config.sql" script.
+SYS> @apex_rest_config.sql
+SQL> @apex_epg_config.sql /home/oracle [/u01/opt - where the apex file is located]
+
+
+
+USERS	31.63
+USER_DATA	319.69
+LOB_IMAGE	158.25
+USER_INDX	146.13
+
+Create tablespace lab_one datafile '/u01/app/oracle/oradata/orcl/lab_one_tbs_01.dbf' size 1G;
+
+DROP USER LAB_ONE CASCADE;
+
+CREATE USER LAB_ONE
+  IDENTIFIED BY lab_one
+  DEFAULT TABLESPACE USERS
+  TEMPORARY TABLESPACE TEMP
+  PROFILE DEFAULT
+  ACCOUNT UNLOCK;
+  -- 3 Roles for LAB_ONE 
+  GRANT RESOURCE TO LAB_ONE;
+  GRANT APP_DEV TO LAB_ONE;
+  GRANT CONNECT TO LAB_ONE;
+  ALTER USER LAB_ONE DEFAULT ROLE ALL;
+  -- 2 System Privileges for LAB_ONE 
+  GRANT ALTER SYSTEM TO LAB_ONE;
+  GRANT UNLIMITED TABLESPACE TO LAB_ONE;
+  -- 2 Object Privileges for LAB_ONE 
+    GRANT EXECUTE ON SYS.DBMS_CRYPTO TO LAB_ONE;
+    GRANT SELECT ON SYS.V_$SESSION TO LAB_ONE;
+
+impdp system/sys DIRECTORY=DATA_PUMP_DIR dumpfile=lab_one_020922-23-00.dmp logfile=lab_one_output.log REMAP_TABLESPACE=USERS:LAB_ONE,USER_DATA:LAB_ONE,USER_INDX:LAB_ONE,LOB_IMAGE:LAB_ONE encryption_password=LabOnAtiDb
+
