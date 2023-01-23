@@ -1,0 +1,167 @@
+=====================================================================
+Installation of Oracle Apex 22.2
+=====================================================================
+
+[oracle@ninjadba u01]$ ls -lrt
+total 16
+drwxr-xr-x. 6 oracle oinstall 4096 Nov 12 01:38 apex
+drwxrwxr-x. 4 oracle oinstall   40 Jan 23 21:07 app
+drwxr-xr-x. 9 oracle oinstall 4096 Jan 23 21:09 ords
+drwxr-xr-x. 8 oracle oinstall 4096 Jan 23 21:14 jdk-11.0.9
+drwxr-xr-x. 2 oracle oinstall   64 Jan 23 21:14 META-INF
+drwxr-xr-x. 9 oracle oinstall 4096 Jan 23 21:14 apache-tomcat-9.0.45
+
+
+[oracle@localhost ]$ sqlplus / as sysdba
+SQL> alter session set container=orclpdb;
+SQL> SELECT FILE_NAME FROM DBA_DATA_FILES;
+
+Step 1:
+SQL> create tablespace apex datafile '/u01/app/oracle/oradata/orcl/apex01.dbf' SIZE 100M AUTOEXTEND ON NEXT 1M;
+
+SQL> SELECT TABLESPACE_NAME FROM DBA_DATA_FILES;
+SQL> SELECT FILE_NAME FROM DBA_DATA_FILES;
+
+Step 2:
+[oracle@localhost soft]$ ls
+apex_21.2_en.zip
+[oracle@localhost soft]$ unzip apex_21.2_en.zip
+
+Step 3:
+Connect to SQL*Plus as the SYS user and run the "apexins.sql" script, specifying the relevant tablespace names and image URL.
+[oracle@localhost soft]$ cd apex/
+[oracle@localhost apex]$ sqlplus
+
+SQL> show con_name;
+CON_NAME
+------------------------------
+ORCLPDB
+SQL> @apexins.sql APEX APEX TEMP /i/    [ Note: @apexins.sql tablespace_apex tablespace_files tablespace_temp images ]
+
+Step 4:
+change the admin password:
+SYS> @apxchpwd.sql
+
+Step 5:
+Create the APEX_LISTENER and APEX_REST_PUBLIC_USER users by running the "apex_rest_config.sql" script.
+SYS> @apex_rest_config.sql
+
+Welcome@123#
+
+Step 6:
+Unlock the following users and change their passwords:
+SYS> SET LINESIZE 200
+SYS> select username,account_status from dba_users where username like 'APEX%' ;
+SYS> ALTER USER APEX_220200 IDENTIFIED BY "Welcome@123#" ACCOUNT UNLOCK;
+
+SYS> select account_status from dba_users where username = 'ANONYMOUS';
+
+[oracle@oracledb apex]$ sqlplus / as sysdba
+SQL> ALTER USER ANONYMOUS IDENTIFIED BY "Welcome@123#" ACCOUNT UNLOCK;
+
+
+
+
+https://oracle-base.com/articles/misc/oracle-rest-data-services-ords-standalone-mode-22-onward
+https://oracle-base.com/articles/misc/oracle-rest-data-services-ords-installation-on-tomcat-22-onward
+
+
+Welcome@123#
+=====================================================================
+Installing ORDS
+=====================================================================
+We will use the following environment variables when referencing the paths in this article. Notice we are adding the ORDS_HOME/bin 
+directory to our PATH, so we don't have to explicitly state the path each time we use the ords command.
+
+[oracle@oracledb] vim .bash_profile
+
+export ORDS_HOME=/u01/ords
+export ORDS_CONFIG=/u01/ords/config
+export ORDS_LOGS=${ORDS_CONFIG}/logs
+export DB_PORT=1521
+export DB_SERVICE=vatpdb
+export SYSDBA_USER=SYS
+export SYSDBA_PASSWORD=SysPassword1
+export ORDS_PASSWORD=OraPassword1
+
+
+[oracle@oracledb] . .bash_profile
+[oracle@oracledb u01]$ tar -xzf jdk-11.0.9_linux-x64_bin.tar.gz
+[oracle@oracledb u01]$ mkdir ords
+[oracle@oracledb u01]$ mv ords-22.1.0.105.1723.zip /u01/ords
+[oracle@oracledb u01]$ unzip ords-21.4.2.062.1806.zip
+[oracle@oracledb u01]$ cd ords
+[oracle@oracledb ords]$ mkdir -p /u01/ords/config/logs
+
+
+[oracle@oracledb ords]$
+${ORDS_HOME}/bin/ords --config ${ORDS_CONFIG} install \
+     --log-folder ${ORDS_LOGS} \
+     --admin-user ${SYSDBA_USER} \
+     --db-hostname ${HOSTNAME} \
+     --db-port ${DB_PORT} \
+     --db-servicename ${DB_SERVICE} \
+     --feature-db-api true \
+     --feature-rest-enabled-sql true \
+     --feature-sdw true \
+     --gateway-mode proxied \
+     --gateway-user APEX_PUBLIC_USER \
+     --proxy-user \
+     --password-stdin <<EOF
+${SYSDBA_PASSWORD}
+${ORDS_PASSWORD}
+EOF
+
+
+---------------------------------------------------------------------
+
+
+
+
+=====================================================================
+
+SQL> select username,account_status from dba_users where username like 'ORDS%'
+SQL> ALTER USER ORDSYS ACCOUNT UNLOCK identified by "Welcome@123#";
+
+
+
+
+
+
+
+
+=====================================================================
+Installation of Tomcat & Java JDK
+=====================================================================
+[oracle@oracledb u01]$ tar -xzf jdk-11.0.9_linux-x64_bin.tar.gz
+[oracle@oracledb u01]$ tar -xzf apache-tomcat-9.0.45.tar.gz
+[oracle@oracledb u01]$ rm -rf jdk-11.0.9_linux-x64_bin.tar.gz apache-tomcat-9.0.45.tar.gz
+
+[oracle@localhost u01]$ vim .bash_profile
+export JAVA_HOME=/u01/jdk-11.0.9
+export CATALINA_HOME=/u01/apache-tomcat-9.0.45
+export CATALINA_BASE=$CATALINA_HOME
+export CATALINA_OPTS="$CATALINA_OPTS -Duser.timezone=UTC"
+export JAVA_OPTS="-Dconfig.url=${ORDS_CONFIG} -Xms1024M -Xmx1024M"
+
+
+[oracle@localhost bin]$ ps -ef|grep tomcat
+
+Tomcat Port Change
+=====================
+vim /home/oracle/soft/apache-tomcat-9.0.45/conf/server.xml
+
+$CATALINA_HOME/bin/shutdown.sh
+$CATALINA_HOME/bin/startup.sh
+
+=====================================================================
+Tomcat Deployment
+=====================================================================
+Step 1:
+Copy the APEX images to the Tomcat "webapps" directory.
+[oracle@localhost]$ mkdir -p $CATALINA_HOME/webapps/i/
+[oracle@localhost]$ cp -R /u01/apex/images/* $CATALINA_HOME/webapps/i/
+Step 2:
+Copy the "ords.war" file to the Tomcat "webapps" directory.
+[oracle@localhost ~]$ cd /u01/ords/
+[oracle@localhost ords]$ cp ords.war $CATALINA_HOME/webapps
